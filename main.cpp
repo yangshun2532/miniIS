@@ -12,6 +12,7 @@
 #define CLOTH_FIRST_NUMBER 100001  //第一个文件编号
 #define THRESHOLD 400
 
+unsigned int goodMatch[150000]={0};
 using namespace cv;
 
 int mySurf(Mat *);
@@ -28,9 +29,9 @@ int main()
     SurfFeatureDetector detector(minHessian);
     detector.detect(objectImg,objectKeypoints);
 
-    for(i=0;i<=CLOTH_AMOUNT;i++)
+    for(i=1;i<=CLOTH_AMOUNT;i++)
     {
-        int currentNumber=CLOTH_FIRST_NUMBER+i;   //得到当前文件编号
+        int currentNumber=CLOTH_FIRST_NUMBER+i-1;   //得到当前文件编号
         sprintf(clothPath+strlen(CLOTH_DIR),"clothes_%d.jpg",currentNumber);  //得到当前文件目录
         Mat img=imread(clothPath,CV_LOAD_IMAGE_GRAYSCALE);//IplImage* img = cvLoadImage(clothPath, 1);
         if(img.data==NULL)
@@ -67,6 +68,7 @@ int main()
                 good_matches.push_back(matches[j]);
             }
         }
+        goodMatch[i]=good_matches.size();
         if(good_matches.size()>best)
         {
             best=good_matches.size();
