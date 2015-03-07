@@ -4,10 +4,12 @@
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <opencv2/nonfree/features2d.hpp>
+#include "opencv2/core/core.hpp"
 
-#define CLOTH_DIR "G:\\BaiduYunDownload\\contest_data\\contest_data\\clothes\\clothes_source\\" //图像集所在文件夹
+#define OBJECT_PATH "G:\\BaiduYunDownload\\contest_data\\contest_data\\clothes\\clothes_source\\clothes_250001.jpg"
+#define CLOTH_DIR "G:\\BaiduYunDownload\\contest_data\\contest_data\\clothes\\clothes_image\\" //图像集所在文件夹
 #define CLOTH_AMOUNT 100000    //总文件数
-#define CLOTH_FIRST_NUMBER 250001  //第一个文件编号
+#define CLOTH_FIRST_NUMBER 100001  //第一个文件编号
 #define THRESHOLD 400
 
 using namespace cv;
@@ -17,6 +19,15 @@ int main()
 {
     int i;
     char clothPath[120]=CLOTH_DIR;
+    unsigned int best=0;
+    int ans=0;
+
+    Mat objectImg=imread(OBJECT_PATH,CV_LOAD_IMAGE_GRAYSCALE);
+    int minHessian = THRESHOLD;
+    std::vector<KeyPoint> objectKeypoints;
+    SurfFeatureDetector detector(minHessian);
+    detector.detect(objectImg,objectKeypoints);
+
     for(i=0;i<=CLOTH_AMOUNT;i++)
     {
         int currentNumber=CLOTH_FIRST_NUMBER+i;   //得到当前文件编号
@@ -24,8 +35,51 @@ int main()
         Mat img=imread(clothPath,CV_LOAD_IMAGE_GRAYSCALE);//IplImage* img = cvLoadImage(clothPath, 1);
         if(img.data==NULL)
             return -1; //读完就可以跳出
-        mySurf(&img);
-        cvWaitKey(0);
+        std::vector<KeyPoint> keypoints;
+        detector.detect(img,keypoints);
+
+        //to compare
+        SurfDescriptorExtractor extractor;
+        Mat descriptors_1,descriptors_2;
+        extractor.compute(objectImg,objectKeypoints,descriptors_1);
+        extractor.compute(img,keypoints,descriptors_2);
+
+        FlannBasedMatcher matcher;
+        std::vector<DMatch>matches;
+        matcher.match(descriptors_1,descriptors_2,matches);
+
+        double max_dist=0;
+        double min_dist=100;
+
+        int j;
+        for(j=0;j<descriptors_1.rows;j++)
+        {
+            double dist=matches[j].distance;
+            if(dist<min_dist)min_dist=dist;
+            if(dist>max_dist)max_dist=dist;
+        }
+
+        std::vector<DMatch>good_matches;
+        for(j=0;j<descriptors_1.rows;j++)
+        {
+            if(matches[j].distance<2*min_dist)
+            {
+                good_matches.push_back(matches[j]);
+            }
+        }
+        if(good_matches.size()>best)
+        {
+            best=good_matches.size();
+            ans=i;
+        }
+        printf("%d\n特征点匹配个数：%d\n最佳匹配是第 %d 张图片（%d）\n",i,good_matches.size(),ans,best);
+
+        //draw the good matches
+        Mat img_matches;
+        drawMatches(objectImg,objectKeypoints,img,keypoints,good_matches,img_matches,
+                    Scalar::all(-1),Scalar::all(-1),vector<char>(),DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        imshow("Good Matches",img_matches);
+        waitKey(0);
     }
     return 0;
 }
