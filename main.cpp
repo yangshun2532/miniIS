@@ -5,24 +5,38 @@
 #include "opencv2/highgui/highgui.hpp"
 #include <opencv2/nonfree/features2d.hpp>
 #include "opencv2/core/core.hpp"
+#include "algorithm"
 
 #define OBJECT_PATH "G:\\BaiduYunDownload\\contest_data\\contest_data\\clothes\\clothes_source\\clothes_250001.jpg"
 #define CLOTH_DIR "G:\\BaiduYunDownload\\contest_data\\contest_data\\clothes\\clothes_image\\" //图像集所在文件夹
 #define CLOTH_AMOUNT 150000    //总文件数
 #define CLOTH_FIRST_NUMBER 100001  //第一个文件编号
-#define THRESHOLD 400
+#define THRESHOLD 600
 
-unsigned int goodMatch[150000]={0};
+int i;
+unsigned int best=0;
+
 using namespace cv;
+using namespace std;
 
+
+struct Ans
+{
+    int score;
+    int Num;
+}ans;
+
+bool tmp(struct Ans a,struct Ans b)
+{
+    return a.score>b.score;
+}
+
+struct Ans goodMatch[150001];
 int mySurf(Mat *);
 int main()
 {
-    int i;
     char clothPath[120]=CLOTH_DIR;
-    unsigned int best=0;
-    int ans=0;
-
+    memset(goodMatch,0,sizeof(struct Ans)*CLOTH_AMOUNT);
     Mat objectImg=imread(OBJECT_PATH,CV_LOAD_IMAGE_GRAYSCALE);
     int minHessian = THRESHOLD;
     std::vector<KeyPoint> objectKeypoints;
@@ -72,11 +86,11 @@ int main()
                 good_matches.push_back(matches[j]);
             }
         }
-        goodMatch[i]=good_matches.size();
+        goodMatch[i].score=good_matches.size();
+        goodMatch[i].Num=i;
         if(good_matches.size()>best)
         {
             best=good_matches.size();
-            ans=i;
         }
         //printf("%d\n特征点匹配个数：%d\n最佳匹配是第 %d 张图片（%d）\n",i,good_matches.size(),ans,best);
 
@@ -86,42 +100,21 @@ int main()
                     Scalar::all(-1),Scalar::all(-1),vector<char>(),DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
         imshow("Good Matches",img_matches);
         waitKey(0);*/
+        printf("%d\n",i);
     }
+
+    sort(goodMatch+1,goodMatch+150000,tmp);
     //将goodmatch信息写入文件
     FILE* fp=fopen("G:\\goodmatch.txt","a+");
     if(fp==NULL)
         return -1;
     for(i=1;i<=CLOTH_AMOUNT;i++)
     {
-        fprintf(fp,"%u\n",goodMatch[i]);
+        fprintf(fp,"%d\t%d\n",goodMatch[i].Num,goodMatch[i].score);
     }
     fclose(fp);
-    //将ans信息写入文件
-    FILE* fp_1=fopen("G:\\ans.txt","a+");
-    if(fp==NULL)
-        return -1;
-    printf("The best match is NO:%d\n",ans);
-    fclose(fp_1);
-
     return 0;
 }
 
 
-int i(Mat* img)
-{
-      //-- Step 1: Detect the keypoints using SURF Detector
-      int minHessian = THRESHOLD;
-      SurfFeatureDetector detector( minHessian );
-      std::vector<KeyPoint> keypoints;
-      detector.detect(*img, keypoints);
 
-      //-- Draw keypoints
-      Mat img_keypoints;
-      drawKeypoints(*img, keypoints, img_keypoints, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
-
-      //-- Show detected (drawn) keypoints
-      imshow("Keypoints", img_keypoints);
-
-      waitKey(0);
-      return 0;
-}
